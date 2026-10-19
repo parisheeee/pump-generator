@@ -9,15 +9,30 @@
 
 .program squarewave
     set pindirs, 1   ; Set pin to output
+    pull block ; pull value from OSR
+
+    mov isr, osr; ISR now has pulse_count - 1
+
+    pull block; now OSR has pulse_width
+
 trigger:
+    mov x, isr ; reset the pulse count for everytime the gpio changes
     wait 1 gpio 15   ; wait till gpio 15 goes high
     wait 0 gpio 15 [6] ; wait till gpio 15 is low then start
-    set x, 13
 again:
-    set pins, 1 [14]  ; Drive pin high and then delay for one cycle
-    set pins, 0 [13]  ; Drive pin low, one less since pin stays high in jmp again
-    jmp x-- again        ; Set PC to label `again`
+    set pins, 1; drive pin high and then delay for one cycle
+    mov y, osr; counter for pulse_width
+high_delay:
+    jmp y-- high_delay
+    nop
+    set pins, 0  ; Drive pin low, one less since pin stays high in jmp again
+    mov y, osr
+low_delay:
+    jmp y-- low_delay
+    jmp x-- again
 
     jmp trigger
+
+.wrap
 
 

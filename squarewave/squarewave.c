@@ -24,10 +24,24 @@
 // Our assembled program:
 #include "squarewave.pio.h"
 
+// stuff for prompting
+#include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+//clock stuff
+#include "hardware/clocks.h"
+
 int main() {
     // Pick one PIO instance arbitrarily. We're also arbitrarily picking state
     // machine 0 on this PIO instance (the state machines are numbered 0 to 3
     // inclusive).
+    stdio_init_all();
+
+    //ensures that the terminal is actually connected before sending prompt
+    while (!stdio_usb_connected()) {
+        sleep_ms(10);
+    }
 
     PIO pio = pio0;
 
@@ -36,6 +50,26 @@ int main() {
     gpio_set_dir(15, GPIO_IN);
     gpio_pull_up(15);
 
+    uint32_t pulse_count;
+
+    printf("%s", "Number of pulses: ");
+    //do we really need to flush this all the time?
+    fflush(stdout);
+
+    scanf("%" SCNu32, &pulse_count);
+
+    printf("%s", "Pulse width (in ns): ");
+    fflush(stdout);
+
+    uint32_t pulse_width;
+    scanf("%" SCNu32, &pulse_width);
+
+    //convert pulse width from ns to clock cycles
+    pulse_width = ((uint64_t) pulse_width * clock_get_hz(clk_sys) + 500000000ULL) / 1000000000;
+
+    //substracting clock cycles to account for the pio instructions taking a cycle each
+    pio_sm_put_blocking(pio, 0, pulse_count - 1);
+    pio_sm_put_blocking(pio, 0, pulse_width - 4);
 
     /// \tag::load_program[]
     // Load the assembled program directly into the PIO's instruction memory.
@@ -75,6 +109,7 @@ int main() {
     hw_set_bits(&pio->ctrl, 1 << (PIO_CTRL_SM_ENABLE_LSB + 0));
     /// \end::start_sm[]
 
-    return 0;
+    while(1){
+    }
 
 }
