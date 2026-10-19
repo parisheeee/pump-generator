@@ -1,0 +1,23 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+; assuming instantaneous detection, we set the delay to be 6 cycles
+; plus the one cycle to set up so it should be like 50 ns
+.pio_version 0 // only requires PIO version 0
+
+.program squarewave
+    set pindirs, 1   ; Set pin to output
+trigger:
+    wait 1 gpio 15   ; wait till gpio 15 goes high
+    wait 0 gpio 15 [6] ; wait till gpio 15 is low then start
+    set x, 13
+again:
+    set pins, 1 [14]  ; Drive pin high and then delay for one cycle
+    set pins, 0 [13]  ; Drive pin low, one less since pin stays high in jmp again
+    jmp x-- again        ; Set PC to label `again`
+
+    jmp trigger
+
+
