@@ -20,6 +20,13 @@ include(pico_sdk_import.cmake)
 project(squarewave C CXX ASM)
 pico_sdk_init()
 
+add_executable(delay_generator delay_generator.c)
+pico_generate_pio_header(delay_generator ${CMAKE_CURRENT_LIST_DIR}/delay_generator.pio)
+target_link_libraries(delay_generator PRIVATE pico_stdlib hardware_pio hardware_clocks)
+pico_enable_stdio_usb(delay_generator 1)
+pico_enable_stdio_uart(delay_generator 0)
+pico_add_extra_outputs(delay_generator)
+
 add_executable(pio_squarewave)
 
 pico_generate_pio_header(pio_squarewave ${CMAKE_CURRENT_LIST_DIR}/squarewave.pio)

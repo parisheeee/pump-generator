@@ -1,0 +1,28 @@
+; load_burst loads all the countdowns
+; Input FIFO per burst: count-1, delay-loop-count, width-loop-count.
+; osr: gets TX FIFO w/ pull, isr: stores delay count
+; x: stores remaining pulse count, y: temp countdown register for delay & width
+.program delay_generator
+.pio_version 0
+
+load_burst:
+    pull block              ; osr gets value from C code
+    mov x, osr              ; pulse count - 1
+    pull block
+    mov isr, osr            ; programmable delay loop count
+    pull block              ; osr is now pulse width loop count
+
+next_trigger:
+    wait 0 gpio 15          ; arm only when synchronized input is low
+    wait 1 gpio 15          ; rising edge detected
+    mov y, isr              ; copies delay count into y
+wait_delay:
+    jmp y-- wait_delay      ; decrements delay count until 0
+    set pins, 1             ; generates output pulse (pilatus trigger)
+    mov y, osr              ; now we're working with pulse width
+wait_width:
+    jmp y-- wait_width      ; decrements pulse width delay
+    set pins, 0             ; drives output low
+    jmp x-- next_trigger    ; decrements pulse number
+    irq 0                   ; burst done: raise PIO IRQ flag 0
+    jmp load_burst          ; block until firmware supplies next burst

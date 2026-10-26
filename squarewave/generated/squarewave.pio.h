@@ -19,26 +19,38 @@
 // ---------- //
 
 #define squarewave_wrap_target 0
-#define squarewave_wrap 3
+#define squarewave_wrap 15
 #define squarewave_pio_version 0
 
 static __pio_const uint16_t squarewave_program_instructions[] = {
             //     .wrap_target
     0xe081, //  0: set    pindirs, 1
-    0xe101, //  1: set    pins, 1                [1]
-    0xe000, //  2: set    pins, 0
-    0x0001, //  3: jmp    1
+    0x80a0, //  1: pull   block
+    0xa0c7, //  2: mov    isr, osr
+    0x80a0, //  3: pull   block
+    0xa026, //  4: mov    x, isr
+    0x208f, //  5: wait   1 gpio, 15
+    0x260f, //  6: wait   0 gpio, 15             [6]
+    0xe001, //  7: set    pins, 1
+    0xa047, //  8: mov    y, osr
+    0x0089, //  9: jmp    y--, 9
+    0xa042, // 10: nop
+    0xe000, // 11: set    pins, 0
+    0xa047, // 12: mov    y, osr
+    0x008d, // 13: jmp    y--, 13
+    0x0047, // 14: jmp    x--, 7
+    0x0004, // 15: jmp    4
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static __pio_const struct pio_program squarewave_program = {
     .instructions = squarewave_program_instructions,
-    .length = 4,
+    .length = 16,
     .origin = -1,
     .pio_version = squarewave_pio_version,
 #if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
+    .used_gpio_ranges = 0x1
 #endif
 };
 
