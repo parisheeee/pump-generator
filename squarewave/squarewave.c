@@ -50,25 +50,39 @@ int main() {
     gpio_set_dir(15, GPIO_IN);
     gpio_pull_up(15);
 
-    uint32_t pulse_count;
-
-    printf("%s", "Number of pulses: ");
-    //do we really need to flush this all the time?
-    fflush(stdout);
-
-    scanf("%" SCNu32, &pulse_count);
-
+    //pulse width info
     printf("%s", "Pulse width (in ns): ");
     fflush(stdout);
 
     uint32_t pulse_width;
     scanf("%" SCNu32, &pulse_width);
 
+    //dt count info
+    printf("%s", "How many dt values: ");
+    fflush(stdout);
+
+    uint32_t dt_count;
+    scanf("%" SCNu32, &dt_count);
+
+    //dt values array
+    printf("%s", "Dt values (in ns, max 100): ");
+    fflush(stdout);
+
+    uint32_t dt_values[dt_count];
+
+    for (int i = 0; i < dt_count; i++) {
+        scanf("%" SCNu32, &dt_values[i]);
+    }
+
     //convert pulse width from ns to clock cycles
     pulse_width = ((uint64_t) pulse_width * clock_get_hz(clk_sys) + 500000000ULL) / 1000000000;
 
+    //convert dt values from ns to clock cycles
+    for (int i = 0; i < dt_count; i++) {
+        dt_values[i] = ((uint64_t) dt_values[i] * clock_get_hz(clk_sys) + 500000000ULL) / 1000000000;
+    }
+
     //substracting clock cycles to account for the pio instructions taking a cycle each
-    pio_sm_put_blocking(pio, 0, pulse_count - 1);
     pio_sm_put_blocking(pio, 0, pulse_width - 4);
 
     /// \tag::load_program[]

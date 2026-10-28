@@ -17,8 +17,8 @@
 
 trigger:
     mov x, isr ; reset the pulse count for everytime the gpio changes
-    wait 1 gpio 15   ; wait till gpio 15 goes high
-    wait 0 gpio 15 [6] ; wait till gpio 15 is low then start
+    wait 0 gpio 15   ; wait till gpio 15 goes low
+    wait 1 gpio 15 [6] ; wait till gpio 15 is high then start
 again:
     set pins, 1; drive pin high and then delay for one cycle
     mov y, osr; counter for pulse_width
