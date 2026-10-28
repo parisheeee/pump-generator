@@ -1,38 +1,47 @@
 ;
 ; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
-;
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
-; assuming instantaneous detection, we set the delay to be 6 cycles
-; plus the one cycle to set up so it should be like 50 ns
-.pio_version 0 // only requires PIO version 0
-
 .program squarewave
-    set pindirs, 1   ; Set pin to output
-    pull block ; pull value from OSR
+.pio_version 0
 
-    mov isr, osr; ISR now has pulse_count - 1
+; One frame arrives as three FIFO words from C:
+;   1. pulse count - 1 -> X (2 means three pulses)
+;   2. delay loop count -> ISR (saved for every trigger in this frame)
+;   3. width loop count -> OSR (saved for every pulse in this frame)
+; Y is our temporary countdown register. MOV leaves the saved values unchanged.
 
-    pull block; now OSR has pulse_width
+.wrap_target
+load_frame:
+    pull block
+    mov x, osr
+    pull block
+    mov isr, osr
+    pull block
 
-trigger:
-    mov x, isr ; reset the pulse count for everytime the gpio changes
-    wait 0 gpio 15   ; wait till gpio 15 goes low
-    wait 1 gpio 15 [6] ; wait till gpio 15 is high then start
-again:
-    set pins, 1; drive pin high and then delay for one cycle
-    mov y, osr; counter for pulse_width
-high_delay:
-    jmp y-- high_delay
-    nop
-    set pins, 0  ; Drive pin low, one less since pin stays high in jmp again
+next_trigger:
+    ; PIN 0 means the input base configured in C: GPIO 15.
+    ; Return here for EVERY pulse. No input edge means no new output pulse.
+    wait 0 pin 0
+    wait 1 pin 0
+
+    ; After WAIT completes: MOV + (delay_count + 1) JMP cycles before SET HIGH.
+    ; C sends delay_cycles - 2 to account for these instructions.
+    mov y, isr
+wait_delay:
+    jmp y-- wait_delay
+    set pins, 1
+
+    ; HIGH lasts SET HIGH + MOV + (width_count + 1) JMP cycles.
+    ; C sends width_cycles - 3 to account for these instructions.
     mov y, osr
-low_delay:
-    jmp y-- low_delay
-    jmp x-- again
+wait_width:
+    jmp y-- wait_width
+    set pins, 0
 
-    jmp trigger
-
+    jmp x-- next_trigger
+    irq 0                   ; All three pulses finished. Tell C the frame is done.
+    ; Wrap to PULL BLOCK; output stays LOW until C supplies another frame.
 .wrap
 
 
