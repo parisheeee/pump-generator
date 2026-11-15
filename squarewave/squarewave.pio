@@ -4,12 +4,17 @@
 ;
 .program squarewave
 .pio_version 0
+.define public GLOBAL_TRIGGER_GPIO 14
 
 ; One frame arrives as three FIFO words from C:
 ;   1. pulse count - 1 -> X (2 means three pulses)
 ;   2. delay loop count -> ISR (saved for every trigger in this frame)
 ;   3. width loop count -> OSR (saved for every pulse in this frame)
 ; Y is our temporary countdown register. MOV leaves the saved values unchanged.
+
+; Wait once for global start. The wrap below skips this for later frames.
+    wait 0 gpio GLOBAL_TRIGGER_GPIO
+    wait 1 gpio GLOBAL_TRIGGER_GPIO
 
 .wrap_target
 load_frame:

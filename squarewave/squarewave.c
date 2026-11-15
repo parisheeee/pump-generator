@@ -14,6 +14,7 @@
 #include "squarewave.pio.h"
 
 #define TRIGGER_GPIO 15
+#define GLOBAL_TRIGGER_GPIO squarewave_GLOBAL_TRIGGER_GPIO
 #define OUTPUT_GPIO 0
 #define MAX_DELAYS 100
 
@@ -52,16 +53,26 @@ int main(void) {
     gpio_set_dir(TRIGGER_GPIO, GPIO_IN);
     gpio_pull_down(TRIGGER_GPIO);
 
+    gpio_init(GLOBAL_TRIGGER_GPIO);
+    gpio_set_dir(GLOBAL_TRIGGER_GPIO, GPIO_IN);
+    gpio_pull_down(GLOBAL_TRIGGER_GPIO);
+
     PIO pio = pio0;
     uint sm = pio_claim_unused_sm(pio, true);
     uint offset = pio_add_program(pio, &squarewave_program);
     pio_sm_config config = squarewave_program_get_default_config(offset);
     sm_config_set_set_pins(&config, OUTPUT_GPIO, 1);
     sm_config_set_in_pins(&config, TRIGGER_GPIO); // WAIT PIN 0 uses this input.
-    sm_config_set_clkdiv(&config, 1.0f);         // PIO clock equals system clock.
+
+    //no clock divider for now
+    sm_config_set_clkdiv(&config, 1.0f);
+
+    //set output gpio
     pio_gpio_init(pio, OUTPUT_GPIO);
     pio_sm_init(pio, sm, offset, &config);
+    //set pin direction
     pio_sm_set_consecutive_pindirs(pio, sm, OUTPUT_GPIO, 1, true);
+    //start with output low
     pio_sm_exec(pio, sm, pio_encode_set(pio_pins, 0));
 
     const uint32_t clock_hz = clock_get_hz(clk_sys);
@@ -114,9 +125,10 @@ int main(void) {
 
     printf("Armed: input GPIO %d, output GPIO %d; %" PRIu32 " us between frames.\n",
            TRIGGER_GPIO, OUTPUT_GPIO, pause_between_frames_us);
+    printf("Waiting for global trigger on GPIO %d.\n", GLOBAL_TRIGGER_GPIO);
     fflush(stdout);
 
-    // PIO begins at PULL BLOCK and stays there until we queue a frame.
+    // PIO waits for the global rising edge before processing the delay list.
     pio_sm_set_enabled(pio, sm, true);
     for (uint32_t i = 0; i < delay_count; ++i) {
         queue_frame(pio, sm, delay_cycles[i], width_cycles);
